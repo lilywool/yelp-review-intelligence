@@ -1,0 +1,32 @@
+[
+  {
+    "timestamp_utc": "2026-07-17T02:25:56+00:00",
+    "input": "chipotle_sample_15k.csv",
+    "rows": 15000,
+    "output": "chipotle_sample_15k_REAL.csv",
+    "vad_lexicon": "NRC-VAD-Lexicon-v2_1.txt",
+    "validation": {
+      "word_count_corr": 1.0,
+      "constant_columns": [],
+      "vader_vs_stars_corr": 0.691,
+      "valence_vs_stars_corr": 0.59,
+      "passed": true,
+      "failures": []
+    }
+  },
+  {
+    "timestamp_utc": "2026-07-17T02:28:48+00:00",
+    "input": "hair_sample_15k.csv",
+    "rows": 15000,
+    "output": "hair_sample_15k_REAL.csv",
+    "vad_lexicon": "NRC-VAD-Lexicon-v2_1.txt",
+    "validation": {
+      "word_count_corr": 1.0,
+      "constant_columns": [],
+      "vader_vs_stars_corr": 0.735,
+      "valence_vs_stars_corr": 0.638,
+      "passed": true,
+      "failures": []
+    }
+  }
+]

@@ -1,0 +1,14 @@
+pandas>=2.0
+numpy>=1.26
+vaderSentiment>=3.3
+nrclex>=4.0
+spacy>=3.7
+# after install, run: python -m spacy download en_core_web_sm
+
+# analysis / dashboard (phases 4-5)
+scikit-learn>=1.4
+statsmodels>=0.14
+matplotlib>=3.8
+seaborn>=0.13
+streamlit>=1.35
+plotly>=5.20

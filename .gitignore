@@ -1,0 +1,28 @@
+# Data - not redistributable (Yelp dataset license, NRC lexicon terms) and too
+# large for a clean repo. Regenerate via pipeline/ per README instructions.
+data/raw/
+data/processed/
+data/lexicons/
+*.csv
+!docs/**/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Environment / secrets
+.env
+*.pem
+.aws/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/secrets.toml
