@@ -26,7 +26,7 @@ from nrclex import NRCLex
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_VAD_LEXICON_PATH = "NRC-VAD-Lexicon-v2_1.txt"
+DEFAULT_VAD_LEXICON_PATH = "../data/lexicons/NRC-VAD-Lexicon-v2_1.txt"
 
 NEGATION_WORDS = {
     "not", "no", "never", "none", "nobody", "nothing", "neither", "nowhere",
