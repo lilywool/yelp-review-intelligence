@@ -1,187 +1,622 @@
 # Yelp Review Intelligence
 
-NLP feature engineering, analysis, and an interactive dashboard built on the
-[Yelp Open Dataset](https://business.yelp.com/data/resources/open-dataset/)
-(8.6M reviews), focused on two case-study industries: **Mexican restaurants
-(Chipotle)** and **hair salons (Great Clips)**.
+**Local, reproducible NLP analytics and interactive business intelligence built from the Yelp Open Dataset.**
 
-This is the third iteration of a project that began during my MSBA program.
-Iteration 1 (MSBA 502) built a working sentiment/emotion analysis and
-regression models on a 15k random sample. Iteration 2 (MSBA 503) attempted a
-full AWS/Spark pipeline at 8.6M-review scale. A later audit revealed an opportunity 
-to improve validation. Iteration 3 (this repo) improves the validated single-
-machine pipeline and rebuilds the analysis and dashboard, without AWS/Databricks.
+Yelp Review Intelligence transforms customer reviews into structured NLP features, statistical insights, and interactive business dashboards.
 
-## Key lesson baked into this repo
+The project focuses on two case-study industries:
 
-- `validate()` runs after every pipeline execution and checks that
-  `word_count` actually tracks real text length, that sentiment correlates
-  with star ratings, and that no feature column is frozen at a single value.
-- If any check fails, the pipeline **raises and refuses to write the file**.
-- Every run is recorded in an append-only `pipeline_run_log.json` with
-  timestamps and validation metrics — an audit trail proving the features
-  are real.
+* **Mexican restaurants** — used as a proxy for Chipotle
+* **Hair salons** — used as a proxy for Great Clips
 
-## Repo structure
+The source is the **8.6M-review Yelp Open Dataset**. This iteration is designed around reproducible 15,000-review industry samples that can be generated and analyzed directly on a local computer.
 
+---
+
+## Project Evolution
+
+This project has evolved across three iterations during my MSBA program, with each iteration emphasizing a different part of the analytics workflow.
+
+### Iteration 1 — MSBA 502
+
+The first iteration established the analytical foundation using a 15,000-review sample:
+
+* Text preprocessing
+* Sentiment analysis
+* Emotion analysis
+* Feature engineering
+* Regression and classification modeling
+
+### Iteration 2 — MSBA 503
+
+The second iteration expanded the project to the **8.6M-review Yelp dataset** and explored distributed data engineering using:
+
+* Apache Spark
+* AWS
+* Databricks
+* Distributed feature engineering
+* Large-scale data processing
+
+The focus shifted from analyzing a sample to understanding how an NLP workflow could operate at dataset scale.
+
+### Iteration 3 — Yelp Review Intelligence
+
+This iteration takes the feature-engineering and analytical work developed across the project and rebuilds it around a different objective:
+
+> **Make industry-level Yelp intelligence reproducible, portable, and easy to explore on a local computer.**
+
+Rather than requiring a cloud-based distributed environment, this version provides a self-contained local workflow that:
+
+* Streams the original Yelp JSON dataset
+* Generates reproducible industry samples
+* Computes review-level NLP features locally
+* Incorporates feature-quality checks directly into the processing workflow
+* Produces analysis-ready datasets
+* Supports statistical modeling
+* Powers an interactive Streamlit dashboard
+* Enables industry → location → business exploration
+* Provides review-level predictive and what-if analysis
+
+The result is a more accessible analytical workflow for exploring **how customer language translates into business insight**.
+
+---
+
+# Project Architecture
+
+Iteration 2 and Iteration 3 serve different purposes.
+
+```text
+ITERATION 2
+8.6M Yelp Reviews
+       │
+       ▼
+Apache Spark
+       │
+       ▼
+AWS / Databricks
+       │
+       ▼
+Distributed processing
+       │
+       ▼
+Large-scale feature dataset
+
+
+ITERATION 3
+8.6M Yelp Reviews
+       │
+       ▼
+Reproducible local sampling
+       │
+       ▼
+NLP feature engineering
+       │
+       ▼
+Integrated feature-quality checks
+       │
+       ▼
+Analysis-ready datasets
+       │
+       ├───────────────┐
+       ▼               ▼
+Statistical        Streamlit
+Analysis           Dashboard
+       │               │
+       └───────┬───────┘
+               ▼
+       Industry Insights
 ```
-pipeline/     make_samples.py (Yelp JSON → sample CSVs) +
-              real_feature_engineering.py (samples → validated features) + run log
-data/         raw/, processed/, lexicons/  (all gitignored — see Data setup)
-notebooks/    EDA and modeling notebooks (Jupyter .ipynb)
-dashboard/    Streamlit app 
-docs/         data dictionary and design notes
-archive/      selected artifacts from iterations 1 & 2 (the before/after story)
+
+The architectural tradeoff is intentional:
+
+**Iteration 2 prioritizes distributed scale.**
+
+**Iteration 3 prioritizes local reproducibility, analytical iteration, and business usability.**
+
+---
+
+# From Customer Reviews to Business Insight
+
+The workflow connects unstructured customer language to business-facing analysis:
+
+```text
+Customer Reviews
+       ↓
+Text Processing
+       ↓
+NLP Feature Engineering
+       ↓
+Sentiment + Emotion + Affect
+       ↓
+Statistical Analysis
+       ↓
+Industry / Location / Business Comparisons
+       ↓
+Interactive Dashboard
+       ↓
+Business Insight
 ```
 
-## Features generated (per review)
+The goal is not simply to classify reviews.
 
-| Category | Columns | Method |
-|---|---|---|
-| Text | `stripped_review` (full cleaned text) | URL stripping, whitespace normalization |
-| Linguistic | `word_count`, `char_count`, `avg_word_len`, `avg_sentence_len`, `sentence_count`, `num_excl`, `num_ques`, `num_caps`, `num_at`, `num_hash`, `negation_count` | Direct counts; spaCy sentencizer |
-| Sentiment | `vader_sentiment_score`, `vader_pos`, `vader_neu`, `vader_neg` | VADER (compound in [-1, 1]) |
-| Emotion | `{emotion}_count`, `{emotion}_int_avg` for 8 emotions + `positive_count`, `negative_count`, `dominant_emotion` | NRC Emotion Lexicon (NRCLex) |
-| Affect dimensions | `Valence_avg`, `Arousal_avg`, `Dominance_avg`, `vad_matched_words` | NRC-VAD Lexicon v2.1, word-level lookup averaged per review |
-| Entities | `person_count`, `location_count`, `product_count` | spaCy `en_core_web_sm` NER |
-| Transformers *(optional, `--transformers`)* | `hf_sentiment_label`, `hf_sentiment_confidence`, `hf_computed_sentiment`, `hf_emotion_label`, `hf_emotion_confidence` | HuggingFace DistilBERT sentiment + `j-hartmann/emotion-english-distilroberta-base` |
+It is to provide a structured way to investigate questions such as:
 
-### Lexicons vs. transformers
+* How does customer sentiment differ between industries?
+* Which emotional patterns characterize positive and negative reviews?
+* How does review language relate to star ratings?
+* What linguistic characteristics distinguish businesses?
+* How do sentiment and affect vary geographically?
+* What does a new review's language suggest about its likely rating or sentiment?
 
-The default pipeline uses lexicon methods (VADER, NRC) because they run fast on
-any CPU with no model downloads. The `--transformers` flag **additionally** runs
-the HuggingFace models from iteration 1 — contextual models that are noticeably
-more accurate, especially for emotion (a lexicon can't distinguish "sad they're
-closing!" in a glowing 5-star review from genuine sadness). The tradeoff is
-compute: roughly 25 minutes per 15k reviews on CPU, fast on GPU. If your
-hardware is adequate, `--transformers` is the recommended upgrade; both feature
-sets coexist in the output (`hf_*` columns), so you can compare them directly.
-`hf_computed_sentiment` uses iteration 1's formula: `(2 × label − 1) × confidence`,
-signed to [-1, 1].
+---
 
-Requires `pip install transformers torch` (not in requirements.txt by default,
-since torch is a multi-GB install many users won't need).
+# Feature Engineering
 
-> **Naming caveat:** `*_int_avg` columns are *proportions* (that emotion's
-> share of the review's emotion-bearing words), not word-level intensity
-> averages. The name is kept for schema compatibility with iteration 2.
-> Four iteration-2 columns with no recoverable definition (`wcst_count`,
-> `worry_core_count`, `anxiety_score_avg`, `yelp_sentiment_avg`) were
-> deliberately dropped rather than guessed at.
+Each review is transformed into a structured feature vector.
 
-## Setup
+| Category                      | Columns                                                                                                               | Method                                      |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| **Text**                      | `stripped_review`                                                                                                     | URL stripping, whitespace normalization     |
+| **Linguistic**                | `word_count`, `char_count`, `avg_word_len`, `avg_sentence_len`, `sentence_count`                                      | Direct text measurements; spaCy sentencizer |
+| **Punctuation / formatting**  | `num_excl`, `num_ques`, `num_caps`, `num_at`, `num_hash`                                                              | Direct counts                               |
+| **Negation**                  | `negation_count`                                                                                                      | Negation-term detection                     |
+| **Sentiment**                 | `vader_sentiment_score`, `vader_pos`, `vader_neu`, `vader_neg`                                                        | VADER                                       |
+| **Emotion**                   | `{emotion}_count`, `{emotion}_int_avg` for 8 emotions, `positive_count`, `negative_count`, `dominant_emotion`         | NRC Emotion Lexicon / NRCLex                |
+| **Affect dimensions**         | `Valence_avg`, `Arousal_avg`, `Dominance_avg`, `vad_matched_words`                                                    | NRC-VAD Lexicon v2.1                        |
+| **Entities**                  | `person_count`, `location_count`, `product_count`                                                                     | spaCy `en_core_web_sm` NER                  |
+| **Transformers** *(optional)* | `hf_sentiment_label`, `hf_sentiment_confidence`, `hf_computed_sentiment`, `hf_emotion_label`, `hf_emotion_confidence` | HuggingFace transformer models              |
+
+---
+
+# NLP Feature Layers
+
+The feature set intentionally combines multiple perspectives on review language.
+
+### Linguistic structure
+
+Captures characteristics such as:
+
+* Review length
+* Word length
+* Sentence length
+* Sentence count
+* Punctuation
+* Capitalization
+* Negation
+
+### Sentiment
+
+VADER provides:
+
+* Positive sentiment
+* Neutral sentiment
+* Negative sentiment
+* Compound sentiment
+
+### Emotion
+
+NRC-based features capture eight emotion categories alongside positive and negative affect.
+
+The pipeline also identifies the dominant emotion for each review.
+
+### Affective dimensions
+
+NRC-VAD expands the analysis beyond categorical emotion with three continuous dimensions:
+
+* **Valence** — pleasantness vs. unpleasantness
+* **Arousal** — activation vs. calmness
+* **Dominance** — control vs. submission
+
+This provides a richer representation of customer affect than a single positive/negative sentiment score.
+
+### Named entities
+
+spaCy NER captures counts of:
+
+* People
+* Locations
+* Products
+
+These features provide additional information about what reviewers discuss.
+
+---
+
+# Lexicons and Transformers
+
+The default pipeline uses lightweight NLP methods:
+
+* **VADER** for sentiment
+* **NRC Emotion Lexicon / NRCLex** for emotion
+* **NRC-VAD** for affective dimensions
+* **spaCy** for linguistic processing and NER
+
+These methods are suitable for local execution without requiring large neural-model downloads.
+
+An optional `--transformers` flag adds contextual NLP models:
+
+* DistilBERT sentiment classification
+* `j-hartmann/emotion-english-distilroberta-base` emotion classification
+
+The transformer features coexist with the lexicon features, making it possible to compare contextual and lexicon-based representations within the same analytical dataset.
+
+Transformer processing requires additional dependencies:
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+pip install transformers torch
+```
+
+They are not included in `requirements.txt` by default because PyTorch is a substantial dependency that is unnecessary for the default workflow.
+
+---
+
+# Feature Naming Notes
+
+Some feature names are retained from earlier iterations for schema compatibility.
+
+The `*_int_avg` columns represent the **proportion of emotion-bearing words associated with each emotion**, rather than a word-level intensity average. The original names are retained to preserve compatibility with the earlier feature schema.
+
+Four legacy features whose definitions could not be reliably reconstructed are excluded from the current feature set:
+
+```text
+wcst_count
+worry_core_count
+anxiety_score_avg
+yelp_sentiment_avg
+```
+
+The current implementation favors explicitly defined and reproducible features.
+
+---
+
+# Repository Structure
+
+```text
+pipeline/
+├── make_samples.py
+├── real_feature_engineering.py
+└── pipeline_run_log.json
+
+data/
+├── raw/
+├── processed/
+└── lexicons/
+
+notebooks/
+└── 01_analysis.ipynb
+
+dashboard/
+└── app.py
+
+docs/
+├── data_dictionary
+└── design_notes
+
+archive/
+└── selected artifacts from Iterations 1–2
+```
+
+Raw Yelp data, processed datasets, and the NRC-VAD lexicon are excluded from Git because their respective licensing terms do not permit redistribution.
+
+---
+
+# Setup
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+### macOS / Linux
+
+```bash
+source .venv/bin/activate
+```
+
+### Windows
+
+```powershell
+.venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
 
-### Data setup (not committed to this repo)
+---
 
-Neither the Yelp data nor the NRC lexicon can be redistributed here, so both
-are regenerated/downloaded locally:
+# Data Setup
 
-1. **Yelp data** — download the [Yelp Open Dataset](https://business.yelp.com/data/resources/open-dataset/)
-   (license restricts redistribution) and unzip the JSON files into a folder,
-   e.g. `Yelp-JSON/`.
-2. **NRC-VAD Lexicon** — request/download from the
-   [official NRC page](https://saifmohammad.com/WebPages/nrc-vad.html)
-   (free for research; terms prohibit redistribution). Save as
-   `data/lexicons/NRC-VAD-Lexicon-v2_1.txt` (tab-separated:
-   `term  valence  arousal  dominance`).
+## Yelp Open Dataset
 
-## Step 1: Generate input samples (reproducible)
+Download the [Yelp Open Dataset](https://business.yelp.com/data/resources/open-dataset/) and extract the JSON files locally.
 
-`pipeline/make_samples.py` streams the raw Yelp JSON (fine on a laptop — two
-low-memory passes over the 8.6M reviews) and extracts fixed-seed random samples
-per industry. **Identical inputs + identical seed = byte-identical samples**,
-which is how this repo stays reproducible without redistributing Yelp's data.
+For example:
+
+```text
+Yelp-JSON/
+├── yelp_academic_dataset_business.json
+├── yelp_academic_dataset_review.json
+├── yelp_academic_dataset_user.json
+└── ...
+```
+
+The Yelp dataset itself is not included in this repository.
+
+## NRC-VAD Lexicon
+
+Request/download the [NRC-VAD Lexicon](https://saifmohammad.com/WebPages/nrc-vad.html) for research use.
+
+Place the file at:
+
+```text
+data/lexicons/NRC-VAD-Lexicon-v2_1.txt
+```
+
+Expected format:
+
+```text
+term    valence    arousal    dominance
+```
+
+---
+
+# Step 1: Generate Industry Samples
+
+`pipeline/make_samples.py` streams the Yelp JSON data and generates fixed-seed samples based on business categories.
+
+This allows the full Yelp dataset to serve as the source while keeping the local analytical workflow manageable.
 
 ```bash
-cd pipeline
-python make_samples.py --json-dir path/to/Yelp-JSON \
+python pipeline/make_samples.py \
+    --json-dir path/to/Yelp-JSON \
     --industry "Mexican:chipotle" "Hair Salons:hair" \
-    --n 15000 --seed 222 --outdir ../data/raw
+    --n 15000 \
+    --seed 222 \
+    --outdir data/raw
 ```
 
-`--industry` takes `CATEGORY:LABEL` pairs — CATEGORY is substring-matched
-against each business's Yelp categories; LABEL names the output file
-(`{label}_sample_{n}.csv`). Add `--no-users` to skip the user JSON for a faster
-run without user-level columns.
+The `--industry` argument uses:
 
-> Historical note: the original iteration-2 samples were drawn by a since-retired
-> AWS/Spark pipeline, so they are not bit-reproducible by this script. The
-> samples produced here are the canonical iteration-3 inputs.
+```text
+CATEGORY:LABEL
+```
 
-## Step 2: Run the feature pipeline
+`CATEGORY` is substring-matched against Yelp business categories.
+
+`LABEL` determines the output filename.
+
+The example above produces:
+
+```text
+chipotle_sample_15000.csv
+hair_sample_15000.csv
+```
+
+To omit user-level information:
 
 ```bash
-cd pipeline
-
-# Both industry samples, lexicon features (default)
-python real_feature_engineering.py \
-    --files ../data/raw/chipotle_sample_15000.csv ../data/raw/hair_sample_15000.csv \
-    --vad-lexicon ../data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
-    --outdir ../data/processed
-
-# Quick smoke test on 300 rows
-python real_feature_engineering.py --files ../data/raw/chipotle_sample_15000.csv \
-    --vad-lexicon ../data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
-    --outdir ../data/processed --sample 300
-
-# With the optional transformer models as well (GPU recommended)
-python real_feature_engineering.py --files ../data/raw/chipotle_sample_15000.csv \
-    --vad-lexicon ../data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
-    --outdir ../data/processed --transformers
+--no-users
 ```
 
-The pipeline accepts **any CSV with a review-text column** (`--text-col`,
-default `raw_review`); a `stars` column additionally enables the
-sentiment-vs-rating validation check.
+### Reproducibility
 
-Outputs `{name}_REAL.csv` per input plus an appended entry in
-`pipeline_run_log.json`. A failed validation raises an `AssertionError` and
-writes nothing.
+The sampler uses a fixed random seed.
 
-Typical validation results on the 15k samples:
+Therefore:
 
-| Dataset | vader ↔ stars | Valence ↔ stars |
-|---|---|---|
-| Chipotle (Mexican restaurants) | 0.69 | 0.59 |
-| Great Clips (hair salons) | 0.74 | 0.64 |
+**identical source data + identical parameters + identical seed = identical samples.**
 
-## Using pipeline functions in notebooks
+The Iteration-2 samples remain preserved as historical artifacts. The samples generated by this repository serve as the canonical inputs for the current local workflow.
 
-The module is import-safe (no side effects at import):
+---
 
-```python
-from pipeline.real_feature_engineering import init_models, process_dataframe, validate
+# Step 2: Run Feature Engineering
 
-init_models(vad_lexicon_path="data/lexicons/NRC-VAD-Lexicon-v2_1.txt")
-df_features = process_dataframe(df, text_col="raw_review")
-validate(df_features)
+Run both industry samples with the default feature set:
+
+```bash
+python pipeline/real_feature_engineering.py \
+    --files data/raw/chipotle_sample_15000.csv \
+            data/raw/hair_sample_15000.csv \
+    --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
+    --outdir data/processed
 ```
 
-## Roadmap
+For a quick 300-row smoke test:
 
-- [x] Validated feature-engineering pipeline (this repo's core)
-- [x] Reproducible sampler from raw Yelp JSON (`make_samples.py`)
-- [x] Optional HuggingFace transformer features (`--transformers`)
-- [x] Unified analysis notebook (`notebooks/01_analysis.ipynb`) — linear R² = 0.60
-      predicting stars, 91% accuracy classifying positive/negative, per-industry comparison
-- [x] Streamlit dashboard (`dashboard/app.py`) — industry → state → city → business
-      drilldown with descriptive, diagnostic, predictive (incl. live what-if review
-      scoring), and prescriptive views. Run: `streamlit run dashboard/app.py`
-- [ ] Scale beyond 15k samples (the sampler already streams the full 8.6M;
-      just raise `--n`)
-- [ ] Lexicon-vs-transformer feature comparison section (needs a `--transformers` run)
+```bash
+python pipeline/real_feature_engineering.py \
+    --files data/raw/chipotle_sample_15000.csv \
+    --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
+    --outdir data/processed \
+    --sample 300
+```
 
-## Acknowledgments
+To include transformer features:
 
-- Yelp Open Dataset (Yelp Inc.) — data used under its dataset license
-- NRC Emotion Lexicon & NRC-VAD Lexicon (Saif M. Mohammad, National Research
-  Council Canada)
-- VADER sentiment (Hutto & Gilbert, 2014), spaCy, NRCLex
-- Original MSBA project teammates: Alex Snyder and Eddie Steele
-  (iterations 1–2 were team efforts; this iteration-3 rebuild is my own)
+```bash
+python pipeline/real_feature_engineering.py \
+    --files data/raw/chipotle_sample_15000.csv \
+    --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
+    --outdir data/processed \
+    --transformers
+```
+
+The pipeline accepts any CSV containing a review-text column.
+
+```text
+--text-col
+```
+
+defaults to:
+
+```text
+raw_review
+```
+
+If a `stars` column is present, the pipeline also incorporates the rating signal into feature diagnostics.
+
+Outputs are written as:
+
+```text
+{name}_REAL.csv
+```
+
+Pipeline execution metadata is recorded in:
+
+```text
+pipeline_run_log.json
+```
+
+---
+
+# Analysis
+
+The unified analysis notebook is:
+
+```text
+notebooks/01_analysis.ipynb
+```
+
+It combines:
+
+* Exploratory data analysis
+* NLP feature distributions
+* Sentiment analysis
+* Emotion analysis
+* Affect analysis
+* Industry comparisons
+* Regression
+* Binary classification
+* Model evaluation
+* Feature interpretation
+
+Current results include:
+
+* **Linear regression R² ≈ 0.60** predicting star ratings
+* **≈91% accuracy** for positive/negative classification
+* Comparative analysis across the two case-study industries
+
+These results describe performance on the project's sampled datasets and are not intended as claims of generalization to all Yelp reviews.
+
+---
+
+# Interactive Dashboard
+
+The Streamlit dashboard translates the analytical dataset into an interactive business-intelligence interface.
+
+The dashboard supports drilldown from:
+
+```text
+Industry
+   ↓
+State
+   ↓
+City
+   ↓
+Business
+```
+
+### Descriptive
+
+Explore:
+
+* Review volume
+* Ratings
+* Sentiment
+* Emotion
+* Linguistic characteristics
+
+### Diagnostic
+
+Investigate:
+
+* Sentiment differences
+* Feature relationships
+* Industry patterns
+* Review-level characteristics
+
+### Predictive
+
+Explore:
+
+* Star prediction
+* Positive/negative classification
+* Review-level scoring
+
+### Prescriptive
+
+Use the observed patterns to investigate potential areas for business attention.
+
+### What-if review scoring
+
+The dashboard also supports live review scoring, allowing a user to enter review text and inspect its predicted sentiment characteristics.
+
+Run the dashboard with:
+
+```bash
+streamlit run dashboard/app.py
+```
+
+---
+
+# Local Analytics by Design
+
+The defining characteristic of this iteration is **accessibility**.
+
+The project uses the Yelp dataset at large scale as its source, but the analytical workflow does not require a cloud account, distributed cluster, or specialized infrastructure.
+
+A user can:
+
+1. Obtain the permitted source data.
+2. Generate an industry-specific sample.
+3. Run the NLP pipeline locally.
+4. Produce an analysis-ready feature dataset.
+5. Launch the dashboard.
+6. Explore businesses and customer sentiment interactively.
+
+This makes the project useful not only as an NLP experiment, but as a **portable framework for industry-level customer review intelligence**.
+
+The same workflow can be adapted to other Yelp business categories by changing the sampling criteria.
+
+---
+
+# Roadmap
+
+* [x] Reproducible sampler from the Yelp JSON dataset
+* [x] Local NLP feature-engineering pipeline
+* [x] Linguistic feature engineering
+* [x] Sentiment analysis
+* [x] Emotion analysis
+* [x] NRC-VAD affective dimensions
+* [x] Named-entity features
+* [x] Optional HuggingFace transformer features
+* [x] Integrated feature-quality diagnostics
+* [x] Pipeline execution logging
+* [x] Unified analysis notebook
+* [x] Regression and classification modeling
+* [x] Industry comparison
+* [x] Interactive Streamlit dashboard
+* [x] Industry → state → city → business drilldown
+* [x] Live review what-if scoring
+* [ ] Run transformer features across the complete canonical samples
+* [ ] Add lexicon-vs-transformer comparison analysis
+* [ ] Expand beyond the current 15k-review samples
+
+---
+
+# Acknowledgments
+
+* **Yelp Inc.** — Yelp Open Dataset
+* **Saif M. Mohammad / National Research Council Canada** — NRC Emotion Lexicon and NRC-VAD Lexicon
+* **Hutto & Gilbert (2014)** — VADER sentiment analysis
+* **spaCy** — NLP processing and named-entity recognition
+* **NRCLex** — NRC-based emotion analysis
+* **HuggingFace** — optional transformer models
+* **Alex Snyder and Eddie Steele** — original project teammates during Iterations 1–2
+
+Iterations 1–2 were collaborative MSBA projects. **Iteration 3 is my own rebuild and extension of the project.**
