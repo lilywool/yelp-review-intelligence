@@ -8,19 +8,11 @@ NLP feature engineering, analysis, and an interactive dashboard built on the
 This is the third iteration of a project that began during my MSBA program.
 Iteration 1 (MSBA 502) built a working sentiment/emotion analysis and
 regression models on a 15k random sample. Iteration 2 (MSBA 503) attempted a
-full AWS/Spark pipeline at 8.6M-review scale — and shipped placeholder mock
-values in half its feature columns without anyone catching it. Iteration 3
-(this repo) fixes that with a validated single-machine pipeline that
-**refuses to save output that fails sanity checks**, then rebuilds the
-analysis and dashboard on genuinely real features.
+full AWS/Spark pipeline at 8.6M-review scale. A later audit revealed an opportunity 
+to improve validation. Iteration 3 (this repo) improves the validated single-
+machine pipeline and rebuilds the analysis and dashboard, without AWS/Databricks.
 
 ## Key lesson baked into this repo
-
-Iteration 2's bug wasn't exotic: a mock UDF (`"STRIPPED TEXT: " + text[:100]`,
-hardcoded emotion scores) was written as a development stand-in and never
-replaced. The output *looked* plausible — 60 columns, reasonable-looking
-numbers — and passed silently into shared team samples. The fix here is
-structural, not one-time:
 
 - `validate()` runs after every pipeline execution and checks that
   `word_count` actually tracks real text length, that sentiment correlates
