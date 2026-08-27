@@ -1,9 +1,5 @@
 """
-Iteration 3 - Real (non-mock) NLP feature engineering for Yelp reviews.
-
-Replaces the placeholder/mock UDF logic found in iteration 2's Spark pipeline
-with actual computations, plus built-in validation checks that make it
-impossible to silently ship constant/fake columns again.
+Iteration 3 - NLP feature engineering for Yelp reviews.
 
 Runs single-machine (pandas + spaCy + VADER + NRCLex) - no Spark/EMR needed
 for this scale of data (tens of thousands to low hundreds of thousands of rows).
@@ -172,9 +168,9 @@ def simple_tokenize(text: str):
 
 
 def clean_text(raw_text: str) -> str:
-    """Real text cleaning - NOT the 'STRIPPED TEXT: ' + text[:100] mock.
+    """Text cleaning
 
-    Order matters: strip URLs first, THEN collapse whitespace, so removed URLs
+    Strip URLs first, then collapse whitespace, so removed URLs
     don't leave double spaces behind.
     """
     if not isinstance(raw_text, str):
@@ -304,7 +300,7 @@ def process_dataframe(df: pd.DataFrame, text_col: str = "raw_review",
 
 
 # ---------------------------------------------------------------------------
-# Validation - the checks that would have caught iteration 2's mock-data bug
+# Validation 
 # ---------------------------------------------------------------------------
 
 def validate(df: pd.DataFrame, text_col: str = "raw_review") -> dict:
@@ -320,8 +316,7 @@ def validate(df: pd.DataFrame, text_col: str = "raw_review") -> dict:
         failures.append(f"word_count barely tracks real text length (r={corr:.3f})")
 
     # num_at/num_hash are legitimately near-zero in restaurant/salon reviews (rare real
-    # symbols), so a small sample can look "constant" without being mock data. Exclude
-    # known-sparse-by-nature columns from this check.
+    # symbols). Exclude known-sparse-by-nature columns from this check.
     expected_sparse = {"num_at", "num_hash"}
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     const_cols = [c for c in numeric_cols if df[c].nunique(dropna=False) == 1 and c not in expected_sparse]
