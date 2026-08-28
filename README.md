@@ -295,8 +295,7 @@ dashboard/
 └── config.toml
 
 docs/
-├── Yelp-Review-Intelligence-NLP-Pipeline-v3.pdf
-└── add_credit_footer.py
+└── Yelp-Review-Intelligence-NLP-Pipeline-v3.pdf
 
 archive/
 └── selected artifacts from Iterations 1–2
