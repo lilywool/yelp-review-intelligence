@@ -14,6 +14,7 @@ Usage:
 import re
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from nrclex import NRCLex
@@ -22,7 +23,13 @@ from nrclex import NRCLex
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_VAD_LEXICON_PATH = "../data/lexicons/NRC-VAD-Lexicon-v2_1.txt"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_VAD_LEXICON_PATH = str(PROJECT_ROOT / "data" / "lexicons" / "NRC-VAD-Lexicon-v2.1.txt")
+DEFAULT_INPUT_FILES = [
+    str(PROJECT_ROOT / "data" / "raw" / "chipotle_sample_15k.csv"),
+    str(PROJECT_ROOT / "data" / "raw" / "hair_sample_15k.csv"),
+]
+DEFAULT_OUTPUT_DIR = str(PROJECT_ROOT / "data" / "processed")
 
 NEGATION_WORDS = {
     "not", "no", "never", "none", "nobody", "nothing", "neither", "nowhere",
@@ -97,7 +104,7 @@ def init_models(vad_lexicon_path: str = DEFAULT_VAD_LEXICON_PATH) -> None:
     # Single-word entries only (44,728 of 54,801 rows); multi-word phrase entries are
     # skipped for now (marginal gain, added lookup complexity at this scale).
     vad_df = pd.read_csv(vad_lexicon_path, sep="\t")
-    vad_df = vad_df[~vad_df["term"].str.contains(" ")]
+    vad_df = vad_df[vad_df["term"].notna() & ~vad_df["term"].str.contains(" ", na=False)]
     VAD_LOOKUP = vad_df.set_index("term")[["valence", "arousal", "dominance"]].to_dict("index")
     print(f"Loaded NRC-VAD lexicon: {len(VAD_LOOKUP):,} single-word terms from {vad_lexicon_path}")
 
@@ -362,11 +369,12 @@ if __name__ == "__main__":
     from pathlib import Path
 
     parser = argparse.ArgumentParser(description="Iteration 3 real feature engineering pipeline.")
-    parser.add_argument("--files", nargs="+", default=["chipotle_sample_15k.csv", "hair_sample_15k.csv"],
+    parser.add_argument("--files", nargs="+", default=DEFAULT_INPUT_FILES,
                         help="Input CSV(s) to process. Default: both industry samples.")
     parser.add_argument("--text-col", default="raw_review", help="Column containing the raw review text.")
     parser.add_argument("--vad-lexicon", default=DEFAULT_VAD_LEXICON_PATH, help="Path to NRC-VAD lexicon TSV.")
-    parser.add_argument("--outdir", default=".", help="Where to write *_REAL.csv outputs + run log.")
+    parser.add_argument("--outdir", default=DEFAULT_OUTPUT_DIR,
+                        help="Where to write *_REAL.csv outputs + run log.")
     parser.add_argument("--sample", type=int, default=None,
                         help="Optional row cap for quick testing (must be >= 1).")
     parser.add_argument("--transformers", action="store_true",

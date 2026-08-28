@@ -13,12 +13,230 @@ Expects processed CSVs in data/processed/ (produced by the pipeline; see README)
 """
 
 from pathlib import Path
+import base64
+import re
 
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 st.set_page_config(page_title="Yelp Review Intelligence", layout="wide")
+
+_BG_TILE_PATH = Path(__file__).resolve().parent / "assets" / "yelp_bg_tile.png"
+_bg_tile_b64 = base64.b64encode(_BG_TILE_PATH.read_bytes()).decode("ascii")
+
+st.markdown(
+    """
+    <style>
+    :root {
+        --ink: #111111;
+        --orange: #f06423;
+        --orange-dark: #c94914;
+        --paper: #f5f1eb;
+        --line: #ded7cf;
+        --muted: #6f6a64;
+    }
+
+    .stApp {
+        background-color: var(--paper);
+        background-image: url("data:image/png;base64,__BG_TILE_B64__");
+        background-repeat: repeat;
+        background-size: 340px 340px;
+        color: var(--ink);
+    }
+
+
+    [data-testid="stSidebar"] {
+        background: var(--ink);
+        border-right: 4px solid var(--orange);
+    }
+
+    [data-testid="stSidebar"] * {
+        color: #f8f5f0;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background: #242424;
+        border-color: #4a4a4a;
+    }
+
+    [data-baseweb="popover"] {
+        height: 160px !important;
+        max-height: 160px !important;
+        overflow: hidden !important;
+    }
+
+    [data-baseweb="popover"] > div,
+    [data-baseweb="popover"] ul {
+        height: 160px !important;
+        max-height: 160px !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+    }
+
+    h1, h2, h3 {
+        color: var(--ink);
+        letter-spacing: 0;
+    }
+
+    h1 {
+        font-weight: 800 !important;
+        border-left: 10px solid var(--orange) !important;
+        padding-left: 28px !important;
+        text-transform: uppercase !important;
+        margin-top: -8px !important;
+        margin-bottom: 24px !important;
+        font-size: clamp(0.9rem, 2.4vw, 1.7rem) !important;
+        letter-spacing: clamp(0.4px, 0.2vw, 2.4px) !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        line-height: 1.3 !important;
+        background: rgba(245, 241, 235, 0.88) !important;
+        border-radius: 0 4px 4px 0 !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+    }
+
+    h2, h3 {
+        border-left: 6px solid var(--orange) !important;
+        padding-left: 20px !important;
+        margin-top: 20px !important;
+        margin-bottom: 16px !important;
+        background: rgba(245, 241, 235, 0.88) !important;
+        border-radius: 0 4px 4px 0 !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+        display: inline-block !important;
+    }
+
+    [data-testid="stSidebar"] h1 {
+        margin-bottom: 20px;
+        background: none !important;
+    }
+
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 60px !important;
+    }
+
+    [data-testid="stCaptionContainer"] {
+        margin-top: 4px;
+        margin-bottom: 16px;
+        background: rgba(255, 255, 255, 0.94) !important;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 2px 6px;
+        display: inline-block !important;
+    }
+
+    [data-testid="stMetric"] {
+        background: #ffffff;
+        background-image: none;
+        border-top: 4px solid var(--orange);
+        border-bottom: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 14px 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: var(--muted);
+        font-size: 0.875rem;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--ink);
+        font-weight: 700;
+    }
+
+    [data-baseweb="tab-list"] {
+        background: rgba(245, 241, 235, 0.92);
+        border-radius: 6px;
+        padding: 4px 8px;
+    }
+
+    button[data-baseweb="tab"] {
+        color: var(--muted);
+    }
+
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: var(--orange-dark);
+        font-weight: 800;
+    }
+
+    [data-baseweb="tab-highlight"] {
+        background: var(--orange);
+    }
+
+    .stButton > button, .stDownloadButton > button {
+        background: var(--orange);
+        border-color: var(--orange);
+        color: #ffffff;
+    }
+
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        background: var(--orange-dark);
+        border-color: var(--orange-dark);
+        color: #ffffff;
+    }
+
+    [data-testid="stDataFrame"] {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    [data-testid="stDataFrameResizable"] {
+        background: #ffffff !important;
+    }
+
+    [data-testid="stAlertContainer"] {
+        background: #fdf2ec !important;
+        border: 1px solid var(--orange);
+        border-radius: 4px;
+    }
+
+    [data-testid="stDataFrame"] tbody tr:nth-child(odd) {
+        background-color: #faf8f4;
+    }
+
+    [data-testid="stDataFrame"] tbody tr:hover {
+        background-color: #f5f1eb;
+    }
+
+    [data-testid="stPlotlyChart"] {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+
+    [data-testid="stExpander"] {
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+    }
+
+    [data-testid="stExpanderDetails"] {
+        background: rgba(255, 255, 255, 0.97);
+    }
+
+    .scrim-list {
+        background: rgba(245, 241, 235, 0.88);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 14px 18px 14px 34px;
+        margin: 8px 0 16px 0;
+    }
+
+    .scrim-list li {
+        margin-bottom: 6px;
+    }
+    </style>
+    """.replace("__BG_TILE_B64__", _bg_tile_b64),
+    unsafe_allow_html=True,
+)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "processed"
 
@@ -105,7 +323,9 @@ with tab_desc:
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("Star rating distribution")
-        st.bar_chart(df["stars"].value_counts().sort_index())
+        rating_counts = df["stars"].value_counts().sort_index().rename_axis("stars").reset_index(name="reviews")
+        rating_counts["label"] = rating_counts["stars"].map(lambda value: f"{value:.0f}-star")
+        st.bar_chart(rating_counts.set_index("label")["reviews"])
     with c2:
         st.subheader("Dominant emotion")
         st.bar_chart(df["dominant_emotion"].value_counts())
@@ -117,6 +337,46 @@ with tab_desc:
         st.line_chart(monthly["avg_stars"])
     else:
         st.info("Not enough months in this selection for a trend line.")
+
+    st.subheader("Rating mix and sentiment profile")
+    chart_left, chart_right = st.columns(2)
+    with chart_left:
+        rating_mix = df["stars"].value_counts().sort_index().rename_axis("stars").reset_index(name="reviews")
+        rating_mix["label"] = rating_mix["stars"].map(lambda value: f"{value:.0f}-star")
+        fig = px.pie(
+            rating_mix,
+            names="label",
+            values="reviews",
+            hole=0.58,
+            color_discrete_sequence=["#f06423", "#f78c52", "#f5b28d", "#77716b", "#111111"],
+        )
+        fig.update_layout(showlegend=True, margin=dict(t=10, b=10, l=10, r=10), height=340)
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    with chart_right:
+        sentiment_by_star = (
+            df.groupby("stars", as_index=False)
+            .agg(avg_sentiment=("vader_sentiment_score", "mean"), reviews=("stars", "size"))
+        )
+        fig = px.bar(
+            sentiment_by_star,
+            x="stars",
+            y="avg_sentiment",
+            text="reviews",
+            color="avg_sentiment",
+            color_continuous_scale=["#111111", "#f06423"],
+            labels={"stars": "Star rating", "avg_sentiment": "Average VADER sentiment"},
+        )
+        fig.update_traces(texttemplate="n=%{text}", textposition="outside", cliponaxis=False)
+        fig.update_layout(
+            coloraxis_showscale=False,
+            margin=dict(t=24, b=36, l=58, r=18),
+            height=340,
+            yaxis=dict(range=[
+                sentiment_by_star["avg_sentiment"].min() - 0.08,
+                sentiment_by_star["avg_sentiment"].max() + 0.12,
+            ]),
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 # ---------------------------------------------------------------------------
 # Diagnostic
@@ -145,7 +405,46 @@ with tab_diag:
         emo_contrast = contrast.loc[[f"{e}_int_avg" for e in EMOTIONS],
                                     ["negative (1-2★)", "positive (4-5★)"]]
         emo_contrast.index = EMOTIONS
-        st.bar_chart(emo_contrast)
+        emo_long = emo_contrast.reset_index(names="emotion").melt(
+            id_vars="emotion", var_name="rating group", value_name="avg intensity"
+        )
+        fig = px.bar(
+            emo_long,
+            x="emotion",
+            y="avg intensity",
+            color="rating group",
+            barmode="group",
+            color_discrete_map={"negative (1-2★)": "#111111", "positive (4-5★)": "#f06423"},
+        )
+        fig.update_layout(
+            margin=dict(t=10, b=10, l=48, r=18),
+            height=340,
+            yaxis=dict(rangemode="tozero"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+        st.subheader("Language signals by rating")
+        rating_features = (
+            df.groupby("stars", as_index=False)
+            .agg(sentiment=("vader_sentiment_score", "mean"),
+                 valence=("Valence_avg", "mean"),
+                 review_length=("word_count", "mean"),
+                 reviews=("stars", "size"))
+        )
+        fig = px.scatter(
+            rating_features,
+            x="sentiment",
+            y="valence",
+            size="reviews",
+            color="stars",
+            text="stars",
+            color_continuous_scale=["#111111", "#f06423"],
+            labels={"sentiment": "Average VADER sentiment", "valence": "Average valence", "stars": "Stars"},
+        )
+        fig.update_traces(textposition="top center")
+        fig.update_layout(coloraxis_showscale=False, margin=dict(t=10, b=10, l=10, r=10), height=380)
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
     with st.expander("Read sample negative reviews (pain-point mining)"):
         for _, row in neg.nlargest(5, "word_count").iterrows():
@@ -187,7 +486,7 @@ with tab_pred:
             sys.path.append(str(Path(__file__).resolve().parent.parent / "pipeline"))
             import real_feature_engineering as fe
             if fe.nlp is None:
-                lex = Path(__file__).resolve().parent.parent / "data" / "lexicons" / "NRC-VAD-Lexicon-v2_1.txt"
+                lex = Path(__file__).resolve().parent.parent / "data" / "lexicons" / "NRC-VAD-Lexicon-v2.1.txt"
                 fe.init_models(vad_lexicon_path=str(lex))
             text = fe.clean_text(txt)
             ling, doc = fe.linguistic_features(text)
@@ -239,8 +538,77 @@ with tab_presc:
     if not recs:
         recs.append("No red flags versus industry baseline in this selection. "
                     "Maintain current operations; monitor the trend line in Descriptive.")
-    for r in recs:
-        st.markdown(f"- {r}")
+    recs_html = "".join(
+        f"<li>{re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', r)}</li>" for r in recs
+    )
+    st.markdown(
+        f'<ul class="scrim-list">{recs_html}</ul>',
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Priority matrix")
+    baseline = load_industry(industry)
+    priority = pd.DataFrame([
+        {"Signal": "Negative review share", "Current": neg_share,
+         "Baseline": (baseline["stars"] <= 2).mean(), "Direction": "Lower is better"},
+        {"Signal": "Anger language", "Current": anger,
+         "Baseline": baseline["anger_int_avg"].mean(), "Direction": "Lower is better"},
+        {"Signal": "Negation density", "Current": negation,
+         "Baseline": baseline["negation_count"].mean(), "Direction": "Lower is better"},
+        {"Signal": "VADER sentiment", "Current": sent,
+         "Baseline": baseline["vader_sentiment_score"].mean(), "Direction": "Higher is better"},
+    ])
+    priority["Gap vs baseline"] = priority["Current"] - priority["Baseline"]
+    priority["Priority"] = np.where(
+        ((priority["Direction"] == "Lower is better") & (priority["Gap vs baseline"] > 0)) |
+        ((priority["Direction"] == "Higher is better") & (priority["Gap vs baseline"] < 0)),
+        "Review",
+        "Monitor",
+    )
+    st.dataframe(
+        priority.style.format({"Current": "{:.3f}", "Baseline": "{:.3f}", "Gap vs baseline": "{:+.3f}"}),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.subheader("Location opportunity map")
+    city_summary = (
+        target.dropna(subset=["city"])
+        .groupby("city", as_index=False)
+        .agg(
+            reviews=("stars", "size"),
+            negative_share=("stars", lambda values: (values <= 2).mean()),
+            avg_stars=("stars", "mean"),
+            avg_sentiment=("vader_sentiment_score", "mean"),
+        )
+    )
+    city_summary = city_summary[city_summary["reviews"] >= 20]
+    if len(city_summary) < 2:
+        st.info("Select a broader location scope to compare multiple cities.")
+    else:
+        fig = px.scatter(
+            city_summary,
+            x="avg_stars",
+            y="negative_share",
+            size="reviews",
+            color="avg_sentiment",
+            hover_name="city",
+            hover_data={"reviews": True, "avg_stars": ":.2f", "negative_share": ":.1%"},
+            color_continuous_scale=["#111111", "#f06423"],
+            labels={
+                "avg_stars": "Average stars",
+                "negative_share": "Negative review share",
+                "avg_sentiment": "Average sentiment",
+                "reviews": "Reviews",
+            },
+        )
+        fig.update_layout(
+            coloraxis_colorbar_title="Sentiment",
+            margin=dict(t=16, b=44, l=58, r=18),
+            height=380,
+        )
+        fig.update_yaxes(tickformat=".0%")
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
     st.caption("Heuristics compare the current selection against its industry baseline on "
                "validated review features. They surface where to look, not verdicts.")

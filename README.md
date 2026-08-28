@@ -353,7 +353,7 @@ Request/download the [NRC-VAD Lexicon](https://saifmohammad.com/WebPages/nrc-vad
 Place the file at:
 
 ```text
-data/lexicons/NRC-VAD-Lexicon-v2_1.txt
+data/lexicons/NRC-VAD-Lexicon-v2.1.txt
 ```
 
 Expected format:
@@ -418,31 +418,31 @@ The Iteration-2 samples remain preserved as historical artifacts. The samples ge
 
 Run both industry samples with the default feature set:
 
-```bash
-python pipeline/real_feature_engineering.py \
-    --files data/raw/chipotle_sample_15000.csv \
-            data/raw/hair_sample_15000.csv \
-    --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
+```powershell
+python pipeline/real_feature_engineering.py `
+       --files data/raw/chipotle_sample_15k.csv `
+                     data/raw/hair_sample_15k.csv `
+    --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2.1.txt `
     --outdir data/processed
 ```
 
 For a quick 300-row smoke test:
 
-```bash
-python pipeline/real_feature_engineering.py \
-    --files data/raw/chipotle_sample_15000.csv \
-    --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
-    --outdir data/processed \
+```powershell
+python pipeline/real_feature_engineering.py `
+       --files data/raw/chipotle_sample_15k.csv `
+       --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2.1.txt `
+       --outdir data/processed `
     --sample 300
 ```
 
 To include transformer features:
 
-```bash
-python pipeline/real_feature_engineering.py \
-    --files data/raw/chipotle_sample_15000.csv \
-    --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2_1.txt \
-    --outdir data/processed \
+```powershell
+python pipeline/real_feature_engineering.py `
+       --files data/raw/chipotle_sample_15k.csv `
+       --vad-lexicon data/lexicons/NRC-VAD-Lexicon-v2.1.txt `
+       --outdir data/processed `
     --transformers
 ```
 
