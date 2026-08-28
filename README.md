@@ -285,11 +285,18 @@ notebooks/
 └── 01_analysis.ipynb
 
 dashboard/
-└── app.py
+├── app.py
+└── assets/
+    ├── yelp_transparent_logo.png
+    ├── yelp_bg_tile.png
+    └── make_bg_tile.py
+
+.streamlit/
+└── config.toml
 
 docs/
-├── data_dictionary
-└── design_notes
+├── Yelp-Review-Intelligence-NLP-Pipeline-v3.pdf
+└── add_credit_footer.py
 
 archive/
 └── selected artifacts from Iterations 1–2
